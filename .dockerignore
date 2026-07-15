@@ -1,0 +1,28 @@
+# Secretos — NUNCA deben entrar en la imagen (se inyectan vía env_file en runtime).
+.env
+.env.*
+
+# Control de versiones y metadatos
+.git
+.gitignore
+.github
+
+# Dependencias y artefactos no necesarios en runtime
+node_modules/
+tests/
+
+# Cachés y temporales de Python/herramientas
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+.venv/
+venv/
+
+# Logs y editores
+*.log
+.vscode/
+.idea/

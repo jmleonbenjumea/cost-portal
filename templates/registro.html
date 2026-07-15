@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}Registro de Llamadas — Control de Gastos IA{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex items-center justify-between">
+  <div>
+    <h2 class="page-title">Registro de Llamadas</h2>
+    <p class="page-subtitle">{{ total }} registros en api_audit_logs</p>
+  </div>
+  <a href="/registro/csv?servicio={{ servicio_filter }}&operacion={{ operacion_filter }}&proyecto_id={{ proyecto_id_filter }}&fecha_desde={{ fecha_desde_filter }}&fecha_hasta={{ fecha_hasta_filter }}"
+     class="btn btn-secondary btn-sm">↓ Exportar CSV</a>
+</div>
+
+<!-- Filters -->
+<form method="get" class="card mb-6 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 items-end">
+  <div>
+    <label class="section-label block mb-1">Proyecto</label>
+    <select name="proyecto_id">
+      <option value="">Todos</option>
+      {% for p in projects %}
+      <option value="{{ p.id }}" {% if proyecto_id_filter==p.id %}selected{% endif %}>{{ p.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label class="section-label block mb-1">Servicio</label>
+    <select name="servicio">
+      <option value="">Todos</option>
+      {% for s in servicios %}
+      <option value="{{ s }}" {% if servicio_filter==s %}selected{% endif %}>{{ s }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label class="section-label block mb-1">Operación</label>
+    <select name="operacion">
+      <option value="">Todas</option>
+      {% for o in operaciones %}
+      <option value="{{ o }}" {% if operacion_filter==o %}selected{% endif %}>{{ o }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label class="section-label block mb-1">Desde</label>
+    <input type="date" name="fecha_desde" value="{{ fecha_desde_filter }}">
+  </div>
+  <div>
+    <label class="section-label block mb-1">Hasta</label>
+    <input type="date" name="fecha_hasta" value="{{ fecha_hasta_filter }}">
+  </div>
+  <div class="flex gap-2">
+    <button type="submit" class="btn btn-primary flex-1">Filtrar</button>
+    <a href="/registro" class="btn btn-secondary">✕</a>
+  </div>
+</form>
+
+<!-- Table -->
+<div class="card overflow-x-auto">
+  <table>
+    <thead>
+      <tr>
+        <th>Timestamp</th>
+        <th>Servicio</th>
+        <th>Operación</th>
+        <th>Modelo</th>
+        <th class="text-right">In tok</th>
+        <th class="text-right">Cache↓</th>
+        <th class="text-right">Out tok</th>
+        <th class="text-right">Páginas</th>
+        <th class="text-right">Coste USD</th>
+        <th>Estado</th>
+        <th>Conversación</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <td class="text-xs whitespace-nowrap" style="color: var(--muted)">{{ row.timestamp.strftime('%d/%m %H:%M:%S') if row.timestamp else '—' }}</td>
+        <td>
+          {% if row.servicio_externo == 'ANTHROPIC' %}
+          <span class="badge" style="background:#e9d5ff;color:#6b21a8">Anthropic</span>
+          {% elif row.servicio_externo == 'OPENAI' %}
+          <span class="badge" style="background:#d1fae5;color:#065f46">OpenAI</span>
+          {% elif row.servicio_externo == 'AZURE_DOC_INTEL' %}
+          <span class="badge" style="background:#dbeafe;color:#1e40af">Azure OCR</span>
+          {% else %}
+          <span class="badge" style="background:#f3f4f6;color:#6b7280">{{ row.servicio_externo }}</span>
+          {% endif %}
+        </td>
+        <td class="font-mono text-xs">{{ row.operacion }}</td>
+        <td class="font-mono text-xs" style="color: var(--muted)">{{ row.model_name or '—' }}</td>
+        <td class="text-right tabular-nums text-xs">{{ row.tokens_input or '—' }}</td>
+        <td class="text-right tabular-nums text-xs" style="color: var(--orange)">{{ row.tokens_cache_read or '—' }}</td>
+        <td class="text-right tabular-nums text-xs">{{ row.tokens_output or '—' }}</td>
+        <td class="text-right tabular-nums text-xs">{{ row.pages_processed or '—' }}</td>
+        <td class="text-right tabular-nums text-xs font-semibold" style="color: var(--navy)">
+          {% if row.cost_usd > 0 %}${{ "%.6f"|format(row.cost_usd) }}{% else %}—{% endif %}
+        </td>
+        <td>
+          {% if row.resultado == 'OK' %}
+          <span class="badge" style="background:#d1fae5;color:#065f46">OK</span>
+          {% else %}
+          <span class="badge" style="background:#fee2e2;color:#991b1b" title="{{ row.codigo_error }}">ERROR</span>
+          {% endif %}
+        </td>
+        <td class="font-mono text-xs max-w-[120px] truncate" style="color: var(--muted)" title="{{ row.conversation_id }}">
+          {{ row.conversation_id[:8] if row.conversation_id else '—' }}…
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="11" class="text-center py-8" style="color: var(--muted)">Sin registros</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- Pagination -->
+  {% if pages > 1 %}
+  <div class="flex items-center justify-between mt-6 pt-4" style="border-top: 1px solid var(--border)">
+    <p class="text-sm" style="color: var(--muted)">Página {{ page }} de {{ pages }}</p>
+    {% set qs = "servicio=" ~ servicio_filter ~ "&operacion=" ~ operacion_filter ~ "&proyecto_id=" ~ proyecto_id_filter ~ "&fecha_desde=" ~ fecha_desde_filter ~ "&fecha_hasta=" ~ fecha_hasta_filter %}
+    <div class="flex gap-2">
+      {% if page > 1 %}
+      <a href="?page={{ page - 1 }}&{{ qs }}" class="btn btn-secondary btn-sm">← Anterior</a>
+      {% endif %}
+      {% if page < pages %}
+      <a href="?page={{ page + 1 }}&{{ qs }}" class="btn btn-primary btn-sm">Siguiente →</a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

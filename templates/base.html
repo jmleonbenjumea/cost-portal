@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Control de Gastos IA — Benjumea{% endblock %}</title>
+
+  <!-- Remap Tailwind palette to Benjumea light theme BEFORE loading Tailwind -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            gray: {
+              '50':  '#f9fafb',
+              '100': '#f3f4f6',
+              '200': '#e5e7eb',
+              '300': '#d1d5db',
+              '400': '#6b7280',
+              '500': '#9ca3af',
+              '600': '#dde1ea',
+              '700': '#eef0f5',
+              '800': '#ffffff',
+              '900': '#f4f5f8',
+            },
+            indigo: {
+              '300': '#2a4f9e',
+              '400': '#01236c',
+              '500': '#012d8a',
+              '600': '#01236c',
+            },
+          }
+        }
+      }
+    }
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+
+  <style>
+    :root {
+      --navy:       #01236c;
+      --navy-hover: #012d8a;
+      --red:        #a20000;
+      --orange:     #f08a12;
+      --text:       #383838;
+      --muted:      #6b7280;
+      --bg:         #f4f5f8;
+      --bg-card:    #ffffff;
+      --border:     #dde1ea;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── 3px navy stripe across the top ──────────────────────── */
+    body::before {
+      content: "";
+      display: block;
+      height: 3px;
+      background: var(--navy);
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+    }
+
+    /* ── Sidebar ─────────────────────────────────────────────── */
+    .sidebar {
+      width: 220px;
+      min-height: 100vh;
+      background: var(--bg-card);
+      border-right: 1px solid var(--border);
+      position: fixed;
+      top: 3px; left: 0; bottom: 0;
+      display: flex;
+      flex-direction: column;
+      z-index: 10;
+    }
+
+    .sidebar-header {
+      padding: 1.25rem 1.25rem 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .sidebar-header img { height: 36px; display: block; }
+    .sidebar-header .app-label {
+      font-size: 0.7rem;
+      color: var(--muted);
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-top: 0.6rem;
+    }
+
+    .sidebar-nav {
+      flex: 1;
+      padding: 0.75rem 0.625rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.125rem;
+    }
+
+    .sidebar-footer {
+      padding: 0.75rem 1.25rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.7rem;
+      color: var(--muted);
+    }
+
+    /* ── Nav links ───────────────────────────────────────────── */
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: var(--muted);
+      text-decoration: none;
+      transition: color 0.15s, background 0.15s;
+    }
+    .nav-link:hover {
+      color: var(--navy);
+      background: rgba(1,35,108,0.06);
+    }
+    .nav-link.active {
+      color: #ffffff;
+      background: var(--navy);
+    }
+    .nav-link svg { width: 15px; height: 15px; flex-shrink: 0; }
+
+    /* ── Main content ────────────────────────────────────────── */
+    .main-content {
+      margin-left: 220px;
+      padding: 2rem 2.5rem;
+      padding-top: calc(2rem + 3px);
+      min-height: 100vh;
+    }
+
+    /* ── Cards ───────────────────────────────────────────────── */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.5rem;
+    }
+    .card:hover { border-color: #c5ccda; }
+
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    /* ── Buttons ─────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      text-decoration: none;
+      transition: background 0.15s, color 0.15s;
+      line-height: 1;
+    }
+    .btn-primary { background: var(--navy); color: #ffffff; }
+    .btn-primary:hover { background: var(--navy-hover); }
+    .btn-secondary { background: var(--bg); border: 1px solid var(--border); color: var(--text); }
+    .btn-secondary:hover { border-color: #c5ccda; background: #eef0f5; }
+    .btn-sm { padding: 0.35rem 0.75rem; font-size: 0.75rem; }
+
+    /* ── Badges ──────────────────────────────────────────────── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.2rem 0.55rem;
+      border-radius: 99px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    /* ── Form inputs ─────────────────────────────────────────── */
+    input[type=text], input[type=number], input[type=color],
+    input[type=date], select, textarea {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.8125rem;
+      color: var(--text);
+      width: 100%;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    input[type=text]:focus, input[type=number]:focus,
+    input[type=date]:focus, select:focus, textarea:focus {
+      border-color: var(--navy);
+      box-shadow: 0 0 0 3px rgba(1,35,108,0.08);
+    }
+    input[type=color] { height: 2.5rem; padding: 0.25rem; cursor: pointer; }
+
+    /* ── Tables ──────────────────────────────────────────────── */
+    table { width: 100%; font-size: 0.8125rem; border-collapse: collapse; }
+    thead tr { border-bottom: 1px solid var(--border); }
+    th {
+      text-align: left;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--red);
+      padding-bottom: 0.75rem;
+      padding-right: 1rem;
+    }
+    td { padding: 0.75rem 1rem 0.75rem 0; color: var(--text); vertical-align: top; }
+    tbody tr { border-bottom: 1px solid rgba(221,225,234,0.6); }
+    tbody tr:hover { background: rgba(1,35,108,0.025); }
+    tbody tr:last-child { border-bottom: none; }
+
+    /* ── Section heading (like api-docs-portal .section-label) ── */
+    .section-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--red);
+      margin-bottom: 0.4rem;
+    }
+
+    /* ── Page heading ────────────────────────────────────────── */
+    .page-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--navy);
+      line-height: 1.2;
+    }
+    .page-subtitle {
+      font-size: 0.8125rem;
+      color: var(--muted);
+      margin-top: 0.25rem;
+    }
+
+    /* ── Inline form panels ──────────────────────────────────── */
+    .form-panel {
+      background: #f8f9fc;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="flex">
+    <!-- Sidebar -->
+    <nav class="sidebar">
+      <div class="sidebar-header">
+        <a href="/"><img src="/static/logo.jpg" alt="Benjumea"></a>
+        <p class="app-label">Control de Gastos IA</p>
+      </div>
+
+      <div class="sidebar-nav">
+        <a href="/" class="nav-link {% if request.url.path == '/' %}active{% endif %}">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+          Dashboard
+        </a>
+        <a href="/proyectos" class="nav-link {% if '/proyectos' in request.url.path %}active{% endif %}">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+          Por Proyecto
+        </a>
+        <a href="/registro" class="nav-link {% if '/registro' in request.url.path %}active{% endif %}">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+          Registro de Llamadas
+        </a>
+        <a href="/config" class="nav-link {% if '/config' in request.url.path %}active{% endif %}">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          Configuración
+        </a>
+      </div>
+
+      <div class="sidebar-footer">Puerto 8001</div>
+    </nav>
+
+    <!-- Main content -->
+    <main class="main-content flex-1">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+
+</body>
+</html>

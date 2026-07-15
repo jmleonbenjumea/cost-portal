@@ -1,0 +1,38 @@
+# cost-portal en producción (Docker). NO levanta su propia Postgres: se conecta a
+# la Postgres CENTRAL compartida (la del compose de siniestros-automation). Así
+# cost-portal, siniestros-automation y el clasificador-correos leen/escriben la MISMA
+# api_audit_logs.
+#
+# CÓMO SE ALCANZA LA BD: metiendo este contenedor en la red Docker que ya creó el compose
+# de siniestros-automation, y hablándole a Postgres por el nombre de su servicio (`db:5432`).
+# Mismo patrón que agente-clasificador-correos.
+#
+#   DATABASE_URL=postgresql+asyncpg://benjumea:<PASSWORD>@db:5432/benjumea
+#
+# NO se usa `host.docker.internal`: la Postgres central se publica en `127.0.0.1:5432`, es
+# decir SOLO en el loopback del host. Un contenedor que sale por la gateway del bridge
+# (172.x.0.1) no llega a ese listener y la conexión se rechaza. Por la red interna sí llega,
+# y además no depende de que el puerto siga publicado.
+services:
+  portal:
+    build: .
+    env_file: .env
+    networks:
+      - central
+    # Solo loopback: lo expone Plesk/nginx por HTTPS en su subdominio.
+    ports:
+      - "127.0.0.1:8001:8001"
+    restart: unless-stopped
+
+networks:
+  central:
+    external: true
+    # Red creada por el compose de siniestros-automation. Docker la nombra
+    # `<directorio>_default`, así que este valor asume que ese repo está clonado en un
+    # directorio llamado `siniestros-automation`.
+    #
+    # VERIFÍCALO EN EL SERVIDOR ANTES DE LEVANTAR:  docker network ls
+    #
+    # Si el nombre no coincide, `docker compose up` falla en el acto con "network not found"
+    # — es un error ruidoso, no una conexión silenciosamente rota.
+    name: siniestros-automation_default

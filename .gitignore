@@ -1,0 +1,20 @@
+# Secretos — nunca se commitean
+.env
+.env.local
+
+# Cachés / temporales de Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+
+# Entornos virtuales
+.venv/
+venv/
+
+# Editores
+.vscode/
+.idea/

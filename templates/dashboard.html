@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Control de Gastos IA{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex items-end justify-between">
+  <div>
+    <h2 class="page-title">Dashboard</h2>
+    <p class="page-subtitle">{{ month_name }} · Actualizado en tiempo real desde api_audit_logs</p>
+  </div>
+  {% if available_months %}
+  <form method="get">
+    <select name="month" onchange="this.form.submit()">
+      {% for m in available_months | reverse %}
+      <option value="{{ m }}" {% if m == selected_month %}selected{% endif %}>{{ m }}</option>
+      {% endfor %}
+    </select>
+  </form>
+  {% endif %}
+</div>
+
+<!-- KPI row -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+  <div class="stat-card">
+    <p class="section-label">Gasto APIs este mes</p>
+    <p class="text-2xl font-bold" style="color: var(--navy)">${{ "%.4f"|format(total_month) }}</p>
+    <p class="text-xs" style="color: var(--muted)">Solo consumo variable (tokens + páginas)</p>
+  </div>
+  <div class="stat-card">
+    <p class="section-label">Licencias dev (fijo)</p>
+    <p class="text-2xl font-bold" style="color: var(--navy)">${{ "%.2f"|format(licenses_total) }}</p>
+    <p class="text-xs" style="color: var(--muted)">Claude Max, suscripciones, etc.</p>
+  </div>
+  <div class="stat-card">
+    <p class="section-label">Total departamento</p>
+    <p class="text-2xl font-bold" style="color: var(--navy)">${{ "%.2f"|format(grand_total) }}</p>
+    <p class="text-xs" style="color: var(--muted)">APIs + licencias</p>
+  </div>
+  <div class="stat-card">
+    <p class="section-label">Ahorro por caché</p>
+    <p class="text-2xl font-bold" style="color: var(--orange)">${{ "%.4f"|format(total_cache_savings) }}</p>
+    <p class="text-xs" style="color: var(--muted)">Tokens servidos desde prompt cache</p>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+  <!-- Daily cost chart -->
+  <div class="card lg:col-span-2">
+    <p class="section-label mb-4">Coste diario — mes seleccionado (USD)</p>
+    <div id="chart-daily"></div>
+  </div>
+
+  <!-- Calls stats -->
+  <div class="card flex flex-col gap-4">
+    <p class="section-label">Llamadas este mes</p>
+    <div class="flex flex-col gap-3">
+      <div class="flex justify-between items-center">
+        <span class="text-sm" style="color: var(--muted)">Exitosas</span>
+        <span class="font-semibold" style="color: var(--text)">{{ total_calls }}</span>
+      </div>
+      <div class="flex justify-between items-center">
+        <span class="text-sm" style="color: var(--muted)">Con error</span>
+        <span class="font-semibold" style="color: var(--red)">{{ error_count }}</span>
+      </div>
+    </div>
+
+    <p class="section-label mt-2">Por modelo</p>
+    <div class="flex flex-col gap-2">
+      {% for model, stats in model_totals.items() %}
+      <div class="flex justify-between items-center">
+        <div>
+          <p class="text-xs font-mono" style="color: var(--text)">{{ model }}</p>
+          <p class="text-xs" style="color: var(--muted)">{{ stats.calls }} llamadas</p>
+        </div>
+        <span class="text-sm font-semibold" style="color: var(--navy)">${{ "%.4f"|format(stats.cost) }}</span>
+      </div>
+      {% else %}
+      <p class="text-xs" style="color: var(--muted)">Sin datos este mes</p>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<script>
+const options = {
+  series: [{ name: "Coste USD", data: {{ chart_values | tojson }} }],
+  chart: { type: "area", height: 220, background: "transparent",
+           toolbar: { show: false }, sparkline: { enabled: false } },
+  dataLabels: { enabled: false },
+  stroke: { curve: "smooth", width: 2 },
+  fill: { type: "gradient", gradient: { shadeIntensity: 1, opacityFrom: 0.15, opacityTo: 0.02 } },
+  xaxis: { categories: {{ chart_labels | tojson }},
+           labels: { style: { colors: "#6b7280", fontSize: "11px" }, rotate: -45 },
+           tickAmount: 10 },
+  yaxis: { labels: { style: { colors: "#6b7280" },
+                     formatter: (v) => "$" + v.toFixed(4) } },
+  colors: ["#01236c"],
+  grid: { borderColor: "#dde1ea" },
+  tooltip: { theme: "light", y: { formatter: (v) => "$" + v.toFixed(6) } },
+};
+new ApexCharts(document.querySelector("#chart-daily"), options).render();
+</script>
+{% endblock %}

@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+{% block title %}Configuración — Control de Gastos IA{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+  <h2 class="page-title">Configuración</h2>
+  <p class="page-subtitle">Precios por modelo, proyectos y licencias de desarrollo</p>
+</div>
+
+<div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+
+  <!-- ── Precios por modelo ─────────────────────────────────── -->
+  <div class="card xl:col-span-2">
+    <div class="flex items-center justify-between mb-4">
+      <p class="section-label">Precios por modelo (USD / MTok)</p>
+      <button onclick="document.getElementById('form-precio').classList.toggle('hidden')"
+              class="btn btn-primary btn-sm">+ Añadir / editar modelo</button>
+    </div>
+
+    <form id="form-precio" method="post" action="/config/precios/upsert"
+          class="form-panel hidden grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+      <div class="md:col-span-2">
+        <label class="section-label block mb-1">Nombre del modelo *</label>
+        <input type="text" name="model_name" placeholder="claude-sonnet-4-6" required>
+      </div>
+      <div>
+        <label class="section-label block mb-1">Proveedor *</label>
+        <select name="provider">
+          <option value="ANTHROPIC">Anthropic</option>
+          <option value="OPENAI">OpenAI</option>
+          <option value="AZURE_DOC_INTEL">Azure Doc Intel</option>
+        </select>
+      </div>
+      <div>
+        <label class="section-label block mb-1">Input ($/MTok)</label>
+        <input type="number" name="price_input_mtok" step="0.001" value="0" min="0">
+      </div>
+      <div>
+        <label class="section-label block mb-1">Output ($/MTok)</label>
+        <input type="number" name="price_output_mtok" step="0.001" value="0" min="0">
+      </div>
+      <div>
+        <label class="section-label block mb-1">Cache read ($/MTok)</label>
+        <input type="number" name="price_cache_read_mtok" step="0.0001" value="0" min="0">
+      </div>
+      <div>
+        <label class="section-label block mb-1">Cache creation ($/MTok)</label>
+        <input type="number" name="price_cache_creation_mtok" step="0.001" value="0" min="0">
+      </div>
+      <div>
+        <label class="section-label block mb-1">Por 1000 páginas (OCR)</label>
+        <input type="number" name="price_per_1k_pages" step="0.01" value="0" min="0">
+      </div>
+      <div class="md:col-span-4">
+        <label class="section-label block mb-1">Notas</label>
+        <input type="text" name="notes" placeholder="Ej: precio vigente desde junio 2026">
+      </div>
+      <div class="md:col-span-4 flex gap-3">
+        <button type="submit" class="btn btn-primary">Guardar</button>
+        <button type="button" onclick="document.getElementById('form-precio').classList.add('hidden')"
+                class="btn btn-secondary">Cancelar</button>
+      </div>
+    </form>
+
+    <table>
+      <thead><tr>
+        <th>Modelo</th><th>Proveedor</th>
+        <th class="text-right">Input</th><th class="text-right">Output</th>
+        <th class="text-right">Cache read</th><th class="text-right">Cache write</th>
+        <th class="text-right">$/1k págs</th><th>Notas</th><th></th>
+      </tr></thead>
+      <tbody>
+        {% for p in prices %}
+        <tr>
+          <td class="font-mono text-xs">{{ p.model_name }}</td>
+          <td><span class="badge" style="background:#f3f4f6;color:#374151">{{ p.provider }}</span></td>
+          <td class="text-right tabular-nums text-xs">${{ "%.3f"|format(p.price_input_mtok) }}</td>
+          <td class="text-right tabular-nums text-xs">${{ "%.3f"|format(p.price_output_mtok) }}</td>
+          <td class="text-right tabular-nums text-xs" style="color: var(--orange)">${{ "%.4f"|format(p.price_cache_read_mtok) }}</td>
+          <td class="text-right tabular-nums text-xs" style="color: var(--orange)">${{ "%.4f"|format(p.price_cache_creation_mtok) }}</td>
+          <td class="text-right tabular-nums text-xs" style="color: var(--navy)">
+            {% if p.price_per_1k_pages > 0 %}${{ "%.2f"|format(p.price_per_1k_pages) }}{% else %}—{% endif %}
+          </td>
+          <td class="text-xs" style="color: var(--muted)">{{ p.notes or '—' }}</td>
+          <td>
+            <button type="button"
+                    onclick="editPrice('{{ p.model_name }}','{{ p.provider }}',{{ p.price_input_mtok }},{{ p.price_output_mtok }},{{ p.price_cache_read_mtok }},{{ p.price_cache_creation_mtok }},{{ p.price_per_1k_pages }},'{{ p.notes or '' }}')"
+                    class="text-xs font-medium transition-colors" style="color: var(--navy)">Editar</button>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="9" class="text-center py-6" style="color: var(--muted)">Cargando precios predeterminados al iniciar…</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── Proyectos ──────────────────────────────────────────── -->
+  <div class="card">
+    <div class="flex items-center justify-between mb-4">
+      <p class="section-label">Proyectos</p>
+      <button onclick="document.getElementById('form-proj').classList.toggle('hidden')"
+              class="btn btn-primary btn-sm">+ Nuevo</button>
+    </div>
+
+    <form id="form-proj" method="post" action="/config/proyectos/upsert"
+          class="form-panel hidden flex flex-col gap-3 mb-4">
+      <input type="hidden" name="project_id" value="">
+      <div>
+        <label class="section-label block mb-1">Nombre *</label>
+        <input type="text" name="name" placeholder="Siniestros Automation" required>
+      </div>
+      <div>
+        <label class="section-label block mb-1">Descripción</label>
+        <input type="text" name="description" placeholder="Apertura automática de siniestros de impago">
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="section-label block mb-1">Color</label>
+          <input type="color" name="color" value="#6366f1" class="h-10 cursor-pointer">
+        </div>
+        <div>
+          <label class="section-label block mb-1">Presupuesto mensual (USD)</label>
+          <input type="number" name="budget_monthly" step="1" min="0" placeholder="0 = sin límite">
+        </div>
+      </div>
+      <p class="text-xs" style="color: var(--muted)">Los costes se imputan automáticamente por <span class="font-mono">api_audit_logs.proyecto</span> = nombre del proyecto.</p>
+      <div class="flex gap-3">
+        <button type="submit" class="btn btn-primary">Guardar</button>
+        <button type="button" onclick="document.getElementById('form-proj').classList.add('hidden')"
+                class="btn btn-secondary">Cancelar</button>
+      </div>
+    </form>
+
+    <div class="flex flex-col gap-2">
+      {% for proj in projects %}
+      <div class="flex items-center justify-between p-3 rounded-lg" style="background: #f8f9fc; border: 1px solid var(--border)">
+        <div class="flex items-center gap-3">
+          <div class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: {{ proj.color }}"></div>
+          <div>
+            <p class="text-sm font-medium" style="color: var(--text)">{{ proj.name }}</p>
+            {% if proj.description %}<p class="text-xs" style="color: var(--muted)">{{ proj.description }}</p>{% endif %}
+          </div>
+        </div>
+        <div class="flex items-center gap-3">
+          {% if proj.budget_monthly %}
+          <p class="text-xs" style="color: var(--muted)">${{ "%.0f"|format(proj.budget_monthly) }}/mes</p>
+          {% endif %}
+          <button type="button"
+                  onclick="editProject('{{ proj.id }}','{{ proj.name }}','{{ proj.description or '' }}','{{ proj.color }}',{{ proj.budget_monthly or 0 }})"
+                  class="text-xs font-medium transition-colors" style="color: var(--navy)">Editar</button>
+        </div>
+      </div>
+      {% else %}
+      <p class="text-sm text-center py-4" style="color: var(--muted)">Sin proyectos. Crea el primero.</p>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- ── Licencias dev ──────────────────────────────────────── -->
+  <div class="card">
+    <div class="flex items-center justify-between mb-4">
+      <p class="section-label">Licencias de desarrollo (fijo mensual)</p>
+      <button onclick="document.getElementById('form-lic').classList.toggle('hidden')"
+              class="btn btn-primary btn-sm">+ Nueva</button>
+    </div>
+
+    <form id="form-lic" method="post" action="/config/licencias/upsert"
+          class="form-panel hidden grid grid-cols-2 gap-3 mb-4">
+      <input type="hidden" name="license_id" value="">
+      <div>
+        <label class="section-label block mb-1">Nombre *</label>
+        <input type="text" name="name" placeholder="Claude Max 5x" required>
+      </div>
+      <div>
+        <label class="section-label block mb-1">Proveedor *</label>
+        <input type="text" name="provider" placeholder="Anthropic" required>
+      </div>
+      <div>
+        <label class="section-label block mb-1">Plan *</label>
+        <input type="text" name="plan" placeholder="Max 5x" required>
+      </div>
+      <div>
+        <label class="section-label block mb-1">Coste mensual (USD) *</label>
+        <input type="number" name="cost_monthly_usd" step="0.01" min="0" required>
+      </div>
+      <div>
+        <label class="section-label block mb-1">Asignado a</label>
+        <input type="text" name="assignee" placeholder="Nombre del desarrollador">
+      </div>
+      <div>
+        <label class="section-label block mb-1">Notas</label>
+        <input type="text" name="notes" placeholder="Amortizable entre proyectos">
+      </div>
+      <div class="col-span-2 flex gap-3">
+        <button type="submit" class="btn btn-primary">Guardar</button>
+        <button type="button" onclick="document.getElementById('form-lic').classList.add('hidden')"
+                class="btn btn-secondary">Cancelar</button>
+      </div>
+    </form>
+
+    {% set total_lic = licenses | sum(attribute='cost_monthly_usd') %}
+    {% if total_lic > 0 %}
+    <div class="flex justify-between items-center mb-3 pb-3" style="border-bottom: 1px solid var(--border)">
+      <span class="text-sm" style="color: var(--muted)">Total licencias activas</span>
+      <span class="text-base font-bold" style="color: var(--navy)">${{ "%.2f"|format(total_lic) }}/mes</span>
+    </div>
+    {% endif %}
+
+    <div class="flex flex-col gap-2">
+      {% for lic in licenses %}
+      <div class="flex items-center justify-between p-3 rounded-lg {% if not lic.active %}opacity-50{% endif %}"
+           style="background: #f8f9fc; border: 1px solid var(--border)">
+        <div>
+          <p class="text-sm font-medium" style="color: var(--text)">{{ lic.name }}
+            <span style="color: var(--muted); font-weight: 400">— {{ lic.provider }}</span>
+          </p>
+          <p class="text-xs" style="color: var(--muted)">{{ lic.plan }}{% if lic.assignee %} · {{ lic.assignee }}{% endif %}</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <span class="text-sm font-semibold" style="color: var(--text)">${{ "%.2f"|format(lic.cost_monthly_usd) }}/mes</span>
+          <form method="post" action="/config/licencias/{{ lic.id }}/toggle">
+            <button type="submit" class="text-xs font-medium transition-colors"
+                    style="color: {% if lic.active %}#16a34a{% else %}#9ca3af{% endif %}">
+              {% if lic.active %}Activa{% else %}Inactiva{% endif %}
+            </button>
+          </form>
+        </div>
+      </div>
+      {% else %}
+      <p class="text-sm text-center py-4" style="color: var(--muted)">Sin licencias. Añade la primera (ej: Claude Max 5x — $100/mes).</p>
+      {% endfor %}
+    </div>
+  </div>
+
+</div>
+
+<script>
+function editProject(id, name, description, color, budget) {
+  const form = document.getElementById('form-proj');
+  form.classList.remove('hidden');
+  form.querySelector('[name=project_id]').value = id;
+  form.querySelector('[name=name]').value = name;
+  form.querySelector('[name=description]').value = description;
+  form.querySelector('[name=color]').value = color;
+  form.querySelector('[name=budget_monthly]').value = budget || '';
+  form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function editPrice(modelName, provider, input, output, cacheRead, cacheWrite, pages, notes) {
+  const form = document.getElementById('form-precio');
+  form.classList.remove('hidden');
+  form.querySelector('[name=model_name]').value = modelName;
+  form.querySelector('[name=provider]').value = provider;
+  form.querySelector('[name=price_input_mtok]').value = input;
+  form.querySelector('[name=price_output_mtok]').value = output;
+  form.querySelector('[name=price_cache_read_mtok]').value = cacheRead;
+  form.querySelector('[name=price_cache_creation_mtok]').value = cacheWrite;
+  form.querySelector('[name=price_per_1k_pages]').value = pages;
+  form.querySelector('[name=notes]').value = notes;
+  form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+</script>
+{% endblock %}
