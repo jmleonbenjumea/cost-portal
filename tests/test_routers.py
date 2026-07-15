@@ -56,9 +56,8 @@ async def client(db_engine):
 
     app.dependency_overrides[get_db] = override_get_db
 
-    # Bypass HTTP Basic Auth in tests
-    from app.auth import require_auth
-    app.dependency_overrides[require_auth] = lambda: "testuser"
+    # En dev (ENVIRONMENT por defecto = development) el middleware `portal_auth` no
+    # exige autenticación, así que no hace falta inyectar credenciales en los tests.
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
@@ -152,8 +151,16 @@ async def test_config_returns_200(client):
 
 
 @pytest.mark.asyncio
-async def test_auth_required_without_override():
-    """Verify that routes return 401 when no credentials are provided."""
+async def test_auth_required_in_production(monkeypatch):
+    """En producción y sin credenciales, las rutas protegidas devuelven 401.
+
+    El middleware `portal_auth` solo exige auth cuando NO es desarrollo; se fuerza
+    `environment=production` para ejercitar la puerta cerrada. El 401 se emite antes
+    de tocar la BD, así que no hace falta override de get_db.
+    """
+    from app.config import settings as app_settings
+
+    monkeypatch.setattr(app_settings, "environment", "production")
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.get("/")

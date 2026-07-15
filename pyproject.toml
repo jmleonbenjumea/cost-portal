@@ -22,6 +22,11 @@ dependencies = [
     "structlog>=24.0",
     "python-multipart>=0.0.9",
     "alembic>=1.13",
+    # SSO con Microsoft Entra ID (opt-in). msal = flujo OIDC/authorization-code;
+    # itsdangerous = firma de la cookie de sesión de Starlette (SessionMiddleware).
+    # Mismo enfoque que siniestros-automation.
+    "msal>=1.31",
+    "itsdangerous>=2.2",
 ]
 
 [project.optional-dependencies]

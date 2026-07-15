@@ -12,6 +12,9 @@ class ModelPrice:
 
 
 # Default prices seeded at startup — kept in sync with portal_cost_config table.
+# USD/millón de tokens (input, output, cache_read, cache_creation) para LLMs; USD/1000
+# páginas para OCR. Editable después en la UI (Config → precios). VERIFICAR los valores
+# contra la factura real de Azure/OpenAI antes de darlos por buenos.
 DEFAULT_PRICES: dict[str, ModelPrice] = {
     "claude-haiku-4-5": ModelPrice(1.00, 5.00, 0.10, 1.25),
     "claude-haiku-4-5-20251001": ModelPrice(1.00, 5.00, 0.10, 1.25),
@@ -21,7 +24,13 @@ DEFAULT_PRICES: dict[str, ModelPrice] = {
     "claude-opus-4-8": ModelPrice(5.00, 25.00, 0.50, 6.25),
     "gpt-4o": ModelPrice(2.50, 10.00, 0.125, 0.0),
     "gpt-4o-mini": ModelPrice(0.15, 0.60, 0.075, 0.0),
+    # Azure OpenAI, familia GPT-5. Lo usan el clasificador-correos (Mailhandler) y
+    # siniestros. cached input = 0.025/Mtok; OpenAI no cobra "cache creation" aparte → 0.
+    "gpt-5-mini": ModelPrice(0.25, 2.00, 0.025, 0.0),
+    # Azure Document Intelligence. `prebuilt-layout` es el que registra siniestros en la
+    # auditoría (no `prebuilt-read`). Tier S0: ~10 USD/1000 págs (Read: 1.50).
     "prebuilt-read": ModelPrice(price_per_1k_pages=1.50),
+    "prebuilt-layout": ModelPrice(price_per_1k_pages=10.00),
 }
 
 
