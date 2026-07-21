@@ -12,7 +12,7 @@
   <!-- ── Precios por modelo ─────────────────────────────────── -->
   <div class="card xl:col-span-2">
     <div class="flex items-center justify-between mb-4">
-      <p class="section-label">Precios por modelo (USD / MTok)</p>
+      <p class="section-label">Precios por modelo (USD / MTok — tarifa del proveedor)</p>
       <button onclick="document.getElementById('form-precio').classList.toggle('hidden')"
               class="btn btn-primary btn-sm">+ Añadir / editar modelo</button>
     </div>
@@ -74,12 +74,12 @@
         <tr>
           <td class="font-mono text-xs">{{ p.model_name }}</td>
           <td><span class="badge" style="background:#f3f4f6;color:#374151">{{ p.provider }}</span></td>
-          <td class="text-right tabular-nums text-xs">${{ "%.3f"|format(p.price_input_mtok) }}</td>
-          <td class="text-right tabular-nums text-xs">${{ "%.3f"|format(p.price_output_mtok) }}</td>
-          <td class="text-right tabular-nums text-xs" style="color: var(--orange)">${{ "%.4f"|format(p.price_cache_read_mtok) }}</td>
-          <td class="text-right tabular-nums text-xs" style="color: var(--orange)">${{ "%.4f"|format(p.price_cache_creation_mtok) }}</td>
+          <td class="text-right tabular-nums text-xs">{{ p.price_input_mtok | num(3) }} $</td>
+          <td class="text-right tabular-nums text-xs">{{ p.price_output_mtok | num(3) }} $</td>
+          <td class="text-right tabular-nums text-xs" style="color: var(--orange)">{{ p.price_cache_read_mtok | num(4) }} $</td>
+          <td class="text-right tabular-nums text-xs" style="color: var(--orange)">{{ p.price_cache_creation_mtok | num(4) }} $</td>
           <td class="text-right tabular-nums text-xs" style="color: var(--navy)">
-            {% if p.price_per_1k_pages > 0 %}${{ "%.2f"|format(p.price_per_1k_pages) }}{% else %}—{% endif %}
+            {% if p.price_per_1k_pages > 0 %}{{ p.price_per_1k_pages | num(2) }} ${% else %}—{% endif %}
           </td>
           <td class="text-xs" style="color: var(--muted)">{{ p.notes or '—' }}</td>
           <td>
@@ -122,6 +122,7 @@
         <div>
           <label class="section-label block mb-1">Presupuesto mensual (USD)</label>
           <input type="number" name="budget_monthly" step="1" min="0" placeholder="0 = sin límite">
+          <p class="text-xs mt-1" style="color: var(--muted)">Se introduce en USD; el panel lo muestra en € al cambio del BCE.</p>
         </div>
       </div>
       <p class="text-xs" style="color: var(--muted)">Los costes se imputan automáticamente por <span class="font-mono">api_audit_logs.proyecto</span> = nombre del proyecto.</p>
@@ -144,7 +145,7 @@
         </div>
         <div class="flex items-center gap-3">
           {% if proj.budget_monthly %}
-          <p class="text-xs" style="color: var(--muted)">${{ "%.0f"|format(proj.budget_monthly) }}/mes</p>
+          <p class="text-xs" style="color: var(--muted)">{{ proj.budget_monthly | eur(0) }}/mes</p>
           {% endif %}
           <button type="button"
                   onclick="editProject('{{ proj.id }}','{{ proj.name }}','{{ proj.description or '' }}','{{ proj.color }}',{{ proj.budget_monthly or 0 }})"
@@ -183,6 +184,7 @@
       <div>
         <label class="section-label block mb-1">Coste mensual (USD) *</label>
         <input type="number" name="cost_monthly_usd" step="0.01" min="0" required>
+        <p class="text-xs mt-1" style="color: var(--muted)">Se introduce en USD; el panel lo muestra en € al cambio del BCE.</p>
       </div>
       <div>
         <label class="section-label block mb-1">Asignado a</label>
@@ -203,7 +205,7 @@
     {% if total_lic > 0 %}
     <div class="flex justify-between items-center mb-3 pb-3" style="border-bottom: 1px solid var(--border)">
       <span class="text-sm" style="color: var(--muted)">Total licencias activas</span>
-      <span class="text-base font-bold" style="color: var(--navy)">${{ "%.2f"|format(total_lic) }}/mes</span>
+      <span class="text-base font-bold" style="color: var(--navy)">{{ total_lic | eur }}/mes</span>
     </div>
     {% endif %}
 
@@ -218,7 +220,7 @@
           <p class="text-xs" style="color: var(--muted)">{{ lic.plan }}{% if lic.assignee %} · {{ lic.assignee }}{% endif %}</p>
         </div>
         <div class="flex items-center gap-3">
-          <span class="text-sm font-semibold" style="color: var(--text)">${{ "%.2f"|format(lic.cost_monthly_usd) }}/mes</span>
+          <span class="text-sm font-semibold" style="color: var(--text)">{{ lic.cost_monthly_usd | eur }}/mes</span>
           <form method="post" action="/config/licencias/{{ lic.id }}/toggle">
             <button type="submit" class="text-xs font-medium transition-colors"
                     style="color: {% if lic.active %}#16a34a{% else %}#9ca3af{% endif %}">

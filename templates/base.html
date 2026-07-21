@@ -39,6 +39,13 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 
+  <!-- Formato europeo en las gráficas. Las series ya llegan convertidas a euros
+       desde Jinja (filtro `eur_num`); aquí solo se formatean. -->
+  <script>
+    const fmtEur = (v, d = 2) =>
+      v.toLocaleString("es-ES", { minimumFractionDigits: d, maximumFractionDigits: d }) + " €";
+  </script>
+
   <style>
     :root {
       --navy:       #01236c;
@@ -302,7 +309,13 @@
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
           Cerrar sesión
         </a>
-        <div style="margin-top:0.5rem;">Puerto 8001</div>
+        <div style="margin-top:0.5rem;" title="Los proveedores facturan en USD; el panel convierte a euros para mostrarlo.">
+          1 USD = {{ fx().usd_to_eur | num(4) }} €<br>
+          <span style="opacity:0.75">
+            {% if fx().is_official %}BCE {{ fx().rate_date | fecha }}{% else %}{{ fx().source }}{% endif %}
+          </span>
+        </div>
+        <div style="margin-top:0.35rem;">Puerto 8001</div>
       </div>
     </nav>
 

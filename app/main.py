@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import binascii
 import secrets
@@ -10,6 +11,7 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
+from app import fx
 from app.config import settings
 from app.database import Base, engine
 from app.routers import auth, config_router, dashboard, proyectos, registro
@@ -28,8 +30,15 @@ async def lifespan(app: FastAPI):
         await conn.run_sync(Base.metadata.create_all)
     await _seed_default_prices()
     await _seed_initial_data()
+    # El tipo USD→EUR se refresca en segundo plano: si el BCE tarda o falla, el panel
+    # sigue sirviendo con el último tipo conocido en vez de bloquear la petición.
+    fx_task = asyncio.create_task(fx.refresh_loop()) if settings.fx_auto_refresh else None
     logger.info("cost_portal.started", port=settings.portal_port, sso=settings.portal_sso_enabled)
-    yield
+    try:
+        yield
+    finally:
+        if fx_task:
+            fx_task.cancel()
 
 
 async def _seed_default_prices() -> None:

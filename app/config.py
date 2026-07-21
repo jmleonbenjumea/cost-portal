@@ -27,6 +27,15 @@ class Settings(BaseSettings):
     # Secreto para firmar la cookie de sesión (estable entre workers).
     session_secret: str = ""
 
+    # ── Divisa ────────────────────────────────────────────────────────────────
+    # El panel muestra los importes en euros, pero los precios y el motor de costes
+    # siguen en USD (moneda de facturación de Anthropic/OpenAI/Azure). El tipo lo
+    # publica el BCE a diario (ver app/fx.py); este valor solo se usa mientras no
+    # haya una cotización descargada (arranque sin red, feed caído).
+    usd_to_eur_fallback: float = 0.92
+    # Desactivable para tests y entornos sin salida a internet.
+    fx_auto_refresh: bool = True
+
     model_config = {"env_file": ".env", "extra": "ignore"}
 
     @property

@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cost_engine import DEFAULT_PRICES, cache_savings, calculate_row_cost
 from app.database import get_db
+from app.formatting import mes_es
 from app.models import CostConfig, DevLicense, Project
 from app.templating import templates
 
@@ -58,12 +59,13 @@ async def dashboard(
         text("SELECT MIN(timestamp) FROM api_audit_logs")
     )).scalar()
 
-    available_months: list[str] = []
+    # value = clave del filtro (YYYY-MM); label = mes en español para el desplegable.
+    available_months: list[dict] = []
     if first_row:
         cursor = first_row.replace(day=1, hour=0, minute=0, second=0, microsecond=0, tzinfo=UTC)
         current_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         while cursor <= current_month:
-            available_months.append(cursor.strftime("%Y-%m"))
+            available_months.append({"value": cursor.strftime("%Y-%m"), "label": mes_es(cursor)})
             if cursor.month == 12:
                 cursor = cursor.replace(year=cursor.year + 1, month=1)
             else:
@@ -169,7 +171,7 @@ async def dashboard(
         "chart_values": chart_values,
         "total_calls": total_calls,
         "error_count": error_count,
-        "month_name": month_start.strftime("%B %Y"),
+        "month_name": mes_es(month_start),
         "selected_month": selected_month,
         "available_months": available_months,
         "projects": projects,

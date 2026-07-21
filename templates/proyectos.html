@@ -29,9 +29,9 @@
       </div>
     </div>
     <div class="text-right">
-      <p class="text-xl font-bold" style="color: var(--navy)">${{ "%.4f"|format(proj.total_cost) }}</p>
-      <p class="text-xs" style="color: var(--navy)">{{ proj.month_name }}: ${{ "%.4f"|format(proj.month_cost) }}</p>
-      <p class="text-xs" style="color: var(--muted)">{{ proj.total_calls }} llamadas API (total)</p>
+      <p class="text-xl font-bold" style="color: var(--navy)">{{ proj.total_cost | eur(4) }}</p>
+      <p class="text-xs" style="color: var(--navy)">{{ proj.month_name }}: {{ proj.month_cost | eur(4) }}</p>
+      <p class="text-xs" style="color: var(--muted)">{{ proj.total_calls | num }} llamadas API (total)</p>
     </div>
   </div>
 
@@ -39,7 +39,7 @@
   <div class="mb-4">
     <div class="flex justify-between text-xs mb-1" style="color: var(--muted)">
       <span>Presupuesto mensual — {{ proj.month_name }}</span>
-      <span>${{ "%.2f"|format(proj.budget_monthly) }} — {{ proj.budget_pct }}% usado este mes</span>
+      <span>{{ proj.budget_monthly | eur }} — {{ proj.budget_pct | num(1) }}% usado este mes</span>
     </div>
     <div class="w-full rounded-full h-2" style="background: var(--border)">
       <div class="h-2 rounded-full transition-all"
@@ -53,17 +53,17 @@
   <div id="chart-proj-{{ loop.index }}"></div>
   <script>
   new ApexCharts(document.querySelector("#chart-proj-{{ loop.index }}"), {
-    series: [{ name: "Coste USD", data: {{ proj.chart_values | tojson }} }],
+    series: [{ name: "Coste", data: {{ proj.chart_values | map('eur_num', 4) | list | tojson }} }],
     chart: { type: "bar", height: 120, background: "transparent", toolbar: { show: false },
              sparkline: { enabled: false } },
     plotOptions: { bar: { borderRadius: 3, columnWidth: "60%" } },
     dataLabels: { enabled: false },
-    xaxis: { categories: {{ proj.chart_labels | tojson }},
+    xaxis: { categories: {{ proj.chart_labels | map('fecha', false) | list | tojson }},
              labels: { style: { colors: "#6b7280", fontSize: "10px" }, rotate: -45 }, tickAmount: 8 },
-    yaxis: { labels: { style: { colors: "#6b7280" }, formatter: (v) => "$" + v.toFixed(4) } },
+    yaxis: { labels: { style: { colors: "#6b7280" }, formatter: (v) => fmtEur(v, 4) } },
     colors: ["{{ proj.color }}"],
     grid: { borderColor: "#dde1ea", strokeDashArray: 4 },
-    tooltip: { theme: "light", y: { formatter: (v) => "$" + v.toFixed(6) } },
+    tooltip: { theme: "light", y: { formatter: (v) => fmtEur(v, 4) } },
   }).render();
   </script>
   {% else %}

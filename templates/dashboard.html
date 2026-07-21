@@ -11,7 +11,7 @@
   <form method="get">
     <select name="month" onchange="this.form.submit()">
       {% for m in available_months | reverse %}
-      <option value="{{ m }}" {% if m == selected_month %}selected{% endif %}>{{ m }}</option>
+      <option value="{{ m.value }}" {% if m.value == selected_month %}selected{% endif %}>{{ m.label }}</option>
       {% endfor %}
     </select>
   </form>
@@ -22,22 +22,22 @@
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
   <div class="stat-card">
     <p class="section-label">Gasto APIs este mes</p>
-    <p class="text-2xl font-bold" style="color: var(--navy)">${{ "%.4f"|format(total_month) }}</p>
+    <p class="text-2xl font-bold" style="color: var(--navy)">{{ total_month | eur(4) }}</p>
     <p class="text-xs" style="color: var(--muted)">Solo consumo variable (tokens + páginas)</p>
   </div>
   <div class="stat-card">
     <p class="section-label">Licencias dev (fijo)</p>
-    <p class="text-2xl font-bold" style="color: var(--navy)">${{ "%.2f"|format(licenses_total) }}</p>
+    <p class="text-2xl font-bold" style="color: var(--navy)">{{ licenses_total | eur }}</p>
     <p class="text-xs" style="color: var(--muted)">Claude Max, suscripciones, etc.</p>
   </div>
   <div class="stat-card">
     <p class="section-label">Total departamento</p>
-    <p class="text-2xl font-bold" style="color: var(--navy)">${{ "%.2f"|format(grand_total) }}</p>
+    <p class="text-2xl font-bold" style="color: var(--navy)">{{ grand_total | eur }}</p>
     <p class="text-xs" style="color: var(--muted)">APIs + licencias</p>
   </div>
   <div class="stat-card">
     <p class="section-label">Ahorro por caché</p>
-    <p class="text-2xl font-bold" style="color: var(--orange)">${{ "%.4f"|format(total_cache_savings) }}</p>
+    <p class="text-2xl font-bold" style="color: var(--orange)">{{ total_cache_savings | eur(4) }}</p>
     <p class="text-xs" style="color: var(--muted)">Tokens servidos desde prompt cache</p>
   </div>
 </div>
@@ -45,7 +45,7 @@
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
   <!-- Daily cost chart -->
   <div class="card lg:col-span-2">
-    <p class="section-label mb-4">Coste diario — mes seleccionado (USD)</p>
+    <p class="section-label mb-4">Coste diario — mes seleccionado (EUR)</p>
     <div id="chart-daily"></div>
   </div>
 
@@ -55,11 +55,11 @@
     <div class="flex flex-col gap-3">
       <div class="flex justify-between items-center">
         <span class="text-sm" style="color: var(--muted)">Exitosas</span>
-        <span class="font-semibold" style="color: var(--text)">{{ total_calls }}</span>
+        <span class="font-semibold" style="color: var(--text)">{{ total_calls | num }}</span>
       </div>
       <div class="flex justify-between items-center">
         <span class="text-sm" style="color: var(--muted)">Con error</span>
-        <span class="font-semibold" style="color: var(--red)">{{ error_count }}</span>
+        <span class="font-semibold" style="color: var(--red)">{{ error_count | num }}</span>
       </div>
     </div>
 
@@ -69,9 +69,9 @@
       <div class="flex justify-between items-center">
         <div>
           <p class="text-xs font-mono" style="color: var(--text)">{{ model }}</p>
-          <p class="text-xs" style="color: var(--muted)">{{ stats.calls }} llamadas</p>
+          <p class="text-xs" style="color: var(--muted)">{{ stats.calls | num }} llamadas</p>
         </div>
-        <span class="text-sm font-semibold" style="color: var(--navy)">${{ "%.4f"|format(stats.cost) }}</span>
+        <span class="text-sm font-semibold" style="color: var(--navy)">{{ stats.cost | eur(4) }}</span>
       </div>
       {% else %}
       <p class="text-xs" style="color: var(--muted)">Sin datos este mes</p>
@@ -82,20 +82,20 @@
 
 <script>
 const options = {
-  series: [{ name: "Coste USD", data: {{ chart_values | tojson }} }],
+  series: [{ name: "Coste", data: {{ chart_values | map('eur_num', 4) | list | tojson }} }],
   chart: { type: "area", height: 220, background: "transparent",
            toolbar: { show: false }, sparkline: { enabled: false } },
   dataLabels: { enabled: false },
   stroke: { curve: "smooth", width: 2 },
   fill: { type: "gradient", gradient: { shadeIntensity: 1, opacityFrom: 0.15, opacityTo: 0.02 } },
-  xaxis: { categories: {{ chart_labels | tojson }},
+  xaxis: { categories: {{ chart_labels | map('fecha', false) | list | tojson }},
            labels: { style: { colors: "#6b7280", fontSize: "11px" }, rotate: -45 },
            tickAmount: 10 },
   yaxis: { labels: { style: { colors: "#6b7280" },
-                     formatter: (v) => "$" + v.toFixed(4) } },
+                     formatter: (v) => fmtEur(v, 4) } },
   colors: ["#01236c"],
   grid: { borderColor: "#dde1ea" },
-  tooltip: { theme: "light", y: { formatter: (v) => "$" + v.toFixed(6) } },
+  tooltip: { theme: "light", y: { formatter: (v) => fmtEur(v, 4) } },
 };
 new ApexCharts(document.querySelector("#chart-daily"), options).render();
 </script>

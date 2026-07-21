@@ -5,7 +5,7 @@
 <div class="mb-6 flex items-center justify-between">
   <div>
     <h2 class="page-title">Registro de Llamadas</h2>
-    <p class="page-subtitle">{{ total }} registros en api_audit_logs</p>
+    <p class="page-subtitle">{{ total | num }} registros en api_audit_logs</p>
   </div>
   <a href="/registro/csv?servicio={{ servicio_filter }}&operacion={{ operacion_filter }}&proyecto_id={{ proyecto_id_filter }}&fecha_desde={{ fecha_desde_filter }}&fecha_hasta={{ fecha_hasta_filter }}"
      class="btn btn-secondary btn-sm">↓ Exportar CSV</a>
@@ -67,7 +67,7 @@
         <th class="text-right">Cache↓</th>
         <th class="text-right">Out tok</th>
         <th class="text-right">Páginas</th>
-        <th class="text-right">Coste USD</th>
+        <th class="text-right">Coste EUR</th>
         <th>Estado</th>
         <th>Conversación</th>
       </tr>
@@ -75,7 +75,7 @@
     <tbody>
       {% for row in rows %}
       <tr>
-        <td class="text-xs whitespace-nowrap" style="color: var(--muted)">{{ row.timestamp.strftime('%d/%m %H:%M:%S') if row.timestamp else '—' }}</td>
+        <td class="text-xs whitespace-nowrap" style="color: var(--muted)">{{ row.timestamp.strftime('%d/%m/%Y %H:%M:%S') if row.timestamp else '—' }}</td>
         <td>
           {% if row.servicio_externo == 'ANTHROPIC' %}
           <span class="badge" style="background:#e9d5ff;color:#6b21a8">Anthropic</span>
@@ -89,12 +89,12 @@
         </td>
         <td class="font-mono text-xs">{{ row.operacion }}</td>
         <td class="font-mono text-xs" style="color: var(--muted)">{{ row.model_name or '—' }}</td>
-        <td class="text-right tabular-nums text-xs">{{ row.tokens_input or '—' }}</td>
-        <td class="text-right tabular-nums text-xs" style="color: var(--orange)">{{ row.tokens_cache_read or '—' }}</td>
-        <td class="text-right tabular-nums text-xs">{{ row.tokens_output or '—' }}</td>
-        <td class="text-right tabular-nums text-xs">{{ row.pages_processed or '—' }}</td>
+        <td class="text-right tabular-nums text-xs">{{ row.tokens_input | num if row.tokens_input else '—' }}</td>
+        <td class="text-right tabular-nums text-xs" style="color: var(--orange)">{{ row.tokens_cache_read | num if row.tokens_cache_read else '—' }}</td>
+        <td class="text-right tabular-nums text-xs">{{ row.tokens_output | num if row.tokens_output else '—' }}</td>
+        <td class="text-right tabular-nums text-xs">{{ row.pages_processed | num if row.pages_processed else '—' }}</td>
         <td class="text-right tabular-nums text-xs font-semibold" style="color: var(--navy)">
-          {% if row.cost_usd > 0 %}${{ "%.6f"|format(row.cost_usd) }}{% else %}—{% endif %}
+          {% if row.cost_usd > 0 %}{{ row.cost_usd | eur(6) }}{% else %}—{% endif %}
         </td>
         <td>
           {% if row.resultado == 'OK' %}

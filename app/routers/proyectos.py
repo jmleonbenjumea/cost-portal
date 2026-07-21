@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cost_engine import calculate_row_cost
 from app.database import get_db
+from app.formatting import mes_es
 from app.models import Project
 from app.routers.dashboard import _load_prices
 from app.templating import templates
@@ -95,7 +96,7 @@ async def proyectos(request: Request, db: AsyncSession = Depends(get_db)):
             "budget_pct": budget_pct,
             "chart_labels": chart_labels,
             "chart_values": chart_values,
-            "month_name": now.strftime("%B %Y"),
+            "month_name": mes_es(now),
         })
 
     return templates.TemplateResponse(request, "proyectos.html", {

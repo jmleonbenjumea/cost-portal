@@ -97,7 +97,10 @@ async def test_registro_csv_returns_csv(client):
     response = await client.get("/registro/csv")
     assert response.status_code == 200
     assert "text/csv" in response.headers["content-type"]
-    assert "id,timestamp" in response.text
+    # Formato europeo: separador `;` y BOM UTF-8 para que Excel-ES lo abra bien.
+    assert response.content.startswith(b"\xef\xbb\xbf")
+    assert "id;timestamp" in response.text
+    assert "coste_eur;coste_usd;tipo_cambio_usd_eur" in response.text
 
 
 @pytest.mark.asyncio

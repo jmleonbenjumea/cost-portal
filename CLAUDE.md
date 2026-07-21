@@ -46,7 +46,9 @@ app/
   database.py      # Engine async, AsyncSessionLocal, Base, get_db
   models.py        # Tablas propias: Project, CostConfig, DevLicense
   cost_engine.py   # Cálculo de costes puro — sin DB ni side effects
-  templating.py    # Instancia global de Jinja2Templates
+  fx.py            # Tipo USD→EUR desde el feed diario del BCE (caché en memoria)
+  formatting.py    # Formato es-ES puro: 1.234,56 · dd/mm/aaaa · meses en español
+  templating.py    # Jinja2Templates + filtros eur / eur_num / num / fecha / mes
   routers/
     dashboard.py      # GET /  — resumen del mes, gráfica 30 días
     registro.py       # GET /registro — tabla paginada de api_audit_logs
@@ -99,6 +101,37 @@ El lifespan de la app hace seed condicional (solo si las tablas están vacías):
 
 Los precios se cargan de `portal_cost_config` en cada request (fallback a `DEFAULT_PRICES`). Los precios son en USD por millón de tokens (`price_*_mtok`). Para OCR se usa `price_per_1k_pages`.
 
+## Divisa y formato
+
+El panel se muestra **en euros y en formato europeo** (`1.234,56 €`, fechas `dd/mm/aaaa`,
+meses en español), pero **el motor de costes y los precios siguen en USD**: es la moneda
+en la que facturan Anthropic, OpenAI y Azure y en la que se guarda `portal_cost_config`.
+
+La conversión ocurre **solo en el borde**, en los filtros Jinja de `app/templating.py`:
+
+| Filtro | Uso |
+|---|---|
+| `eur(usd, decimals=2)` | Importe USD → texto `'1.234,56 €'` |
+| `eur_num(usd, decimals=6)` | Importe USD → número en € para series de gráficas |
+| `num(valor, decimals=0)` | Cifra no monetaria (tokens, llamadas) en formato es-ES |
+| `fecha(valor, con_anio=True)` | ISO o `date` → `21/07/2026` (o `21/07`) |
+| `mes(fecha)` | → `julio 2026` |
+
+Regla: **ningún router formatea dinero**; entrega USD y la plantilla aplica `eur`. En JS,
+las series ya llegan convertidas y se formatean con el helper `fmtEur(v, d)` de `base.html`.
+
+El tipo lo publica el BCE a diario (`eurofxref-daily.xml`, EUR→divisa; se invierte). Se
+cachea 6 h en memoria y lo refresca una tarea de fondo del lifespan, así que **ninguna
+petición del panel espera a la red**. Si el feed falla se conserva el último tipo bueno y,
+si nunca hubo ninguno, se usa `USD_TO_EUR_FALLBACK`. El tipo vigente y su fecha se
+muestran en el pie del sidebar.
+
+Los formularios de `/config` (precios, presupuestos, licencias) **se siguen introduciendo
+en USD** — es la tarifa del proveedor —; el panel los muestra convertidos.
+
+El CSV de `/registro/csv` también sale en convención española: separador `;`, coma
+decimal, BOM UTF-8 y columnas `coste_eur`, `coste_usd` y `tipo_cambio_usd_eur`.
+
 ## Cómo arrancar
 
 ```bash
@@ -133,4 +166,5 @@ pytest
 ```
 
 - `tests/test_cost_engine.py` — tests unitarios de cálculo de costes (sin DB)
+- `tests/test_formatting.py` — formato es-ES y parseo del XML del BCE (sin red)
 - `tests/test_routers.py` — tests de rutas HTTP con SQLite en memoria (sin PostgreSQL)

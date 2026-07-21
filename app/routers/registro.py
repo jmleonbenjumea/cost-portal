@@ -7,6 +7,7 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app import fx
 from app.cost_engine import calculate_row_cost
 from app.database import get_db
 from app.models import Project
@@ -16,6 +17,27 @@ from app.templating import templates
 router = APIRouter(prefix="/registro")
 
 PAGE_SIZE = 50
+
+
+def _decimal_es(value: float, decimals: int) -> str:
+    """Número con coma decimal y sin separador de millares (lo que espera Excel-ES)."""
+    return f"{value:.{decimals}f}".replace(".", ",")
+
+
+def _timestamp_es(value) -> str:
+    """``timestamp`` → ``'21/07/2026 14:03:22'``.
+
+    El driver devuelve ``datetime`` en PostgreSQL pero ``str`` en el SQLite de los
+    tests, así que se acepta cualquiera de los dos.
+    """
+    if not value:
+        return ""
+    if isinstance(value, str):
+        try:
+            value = datetime.fromisoformat(value)
+        except ValueError:
+            return value
+    return value.strftime("%d/%m/%Y %H:%M:%S")
 
 
 @router.get("", response_class=HTMLResponse)
@@ -192,12 +214,17 @@ async def registro_csv(
         params,
     )).mappings().all()
 
+    # Formato europeo: separador `;` y coma decimal, que es lo que espera Excel en
+    # configuración regional española. El coste va en las dos monedas: EUR para el
+    # panel y USD porque es lo que factura el proveedor.
+    fx_rate = fx.current()
     output = io.StringIO()
-    writer = csv.writer(output)
+    writer = csv.writer(output, delimiter=";")
     writer.writerow([
         "id", "timestamp", "servicio", "operacion", "modelo",
         "tokens_input", "tokens_output", "tokens_cache_read", "tokens_cache_creation",
-        "paginas", "duracion_ms", "resultado", "codigo_error", "conversation_id", "coste_usd",
+        "paginas", "duracion_ms", "resultado", "codigo_error", "conversation_id",
+        "coste_eur", "coste_usd", "tipo_cambio_usd_eur",
     ])
     for row in rows:
         cost = calculate_row_cost(
@@ -210,16 +237,21 @@ async def registro_csv(
             prices=prices,
         )
         writer.writerow([
-            row["id"], row["timestamp"], row["servicio_externo"], row["operacion"],
+            row["id"],
+            _timestamp_es(row["timestamp"]),
+            row["servicio_externo"], row["operacion"],
             row["model_name"], row["tokens_input"], row["tokens_output"],
             row["tokens_cache_read"], row["tokens_cache_creation"], row["pages_processed"],
             row["duracion_ms"], row["resultado"], row["codigo_error"], row["conversation_id"],
-            round(cost, 6),
+            _decimal_es(cost * fx_rate.usd_to_eur, 6),
+            _decimal_es(cost, 6),
+            _decimal_es(fx_rate.usd_to_eur, 6),
         ])
 
     filename = f"registro_{datetime.now(UTC).strftime('%Y%m%d_%H%M%S')}.csv"
     return StreamingResponse(
-        iter([output.getvalue()]),
-        media_type="text/csv",
+        # BOM para que Excel detecte UTF-8 y no rompa acentos ni el símbolo €.
+        iter([output.getvalue().encode("utf-8-sig")]),
+        media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
