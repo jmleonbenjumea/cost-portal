@@ -59,7 +59,16 @@ class DevLicense(Base):
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     provider: Mapped[str] = mapped_column(String(60), nullable=False)
     plan: Mapped[str] = mapped_column(String(60), nullable=False)
+    # Precio de tarifa SIN impuestos, tal y como lo publica el proveedor.
     cost_monthly_usd: Mapped[float] = mapped_column(Float, nullable=False)
+    # IVA aplicado en factura (21% en España). 0 para facturas con inversión del
+    # sujeto pasivo, donde el proveedor no repercute IVA.
+    tax_rate_pct: Mapped[float] = mapped_column(Float, default=21.0, nullable=False)
     assignee: Mapped[str | None] = mapped_column(String(120), nullable=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    @property
+    def cost_monthly_gross_usd(self) -> float:
+        """Coste mensual con IVA — el importe que llega realmente en la factura."""
+        return self.cost_monthly_usd * (1 + (self.tax_rate_pct or 0.0) / 100.0)

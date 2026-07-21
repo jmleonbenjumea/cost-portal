@@ -22,13 +22,13 @@
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
   <div class="stat-card">
     <p class="section-label">Gasto APIs este mes</p>
-    <p class="text-2xl font-bold" style="color: var(--navy)">{{ total_month | eur(4) }}</p>
+    <p class="text-2xl font-bold" style="color: var(--navy)">{{ total_month | eur }}</p>
     <p class="text-xs" style="color: var(--muted)">Solo consumo variable (tokens + páginas)</p>
   </div>
   <div class="stat-card">
     <p class="section-label">Licencias dev (fijo)</p>
     <p class="text-2xl font-bold" style="color: var(--navy)">{{ licenses_total | eur }}</p>
-    <p class="text-xs" style="color: var(--muted)">Claude Max, suscripciones, etc.</p>
+    <p class="text-xs" style="color: var(--muted)">Claude Max, suscripciones, etc. — IVA incl.</p>
   </div>
   <div class="stat-card">
     <p class="section-label">Total departamento</p>
@@ -37,7 +37,7 @@
   </div>
   <div class="stat-card">
     <p class="section-label">Ahorro por caché</p>
-    <p class="text-2xl font-bold" style="color: var(--orange)">{{ total_cache_savings | eur(4) }}</p>
+    <p class="text-2xl font-bold" style="color: var(--orange)">{{ total_cache_savings | eur }}</p>
     <p class="text-xs" style="color: var(--muted)">Tokens servidos desde prompt cache</p>
   </div>
 </div>
@@ -71,7 +71,7 @@
           <p class="text-xs font-mono" style="color: var(--text)">{{ model }}</p>
           <p class="text-xs" style="color: var(--muted)">{{ stats.calls | num }} llamadas</p>
         </div>
-        <span class="text-sm font-semibold" style="color: var(--navy)">{{ stats.cost | eur(4) }}</span>
+        <span class="text-sm font-semibold" style="color: var(--navy)">{{ stats.cost | eur }}</span>
       </div>
       {% else %}
       <p class="text-xs" style="color: var(--muted)">Sin datos este mes</p>
@@ -82,7 +82,7 @@
 
 <script>
 const options = {
-  series: [{ name: "Coste", data: {{ chart_values | map('eur_num', 4) | list | tojson }} }],
+  series: [{ name: "Coste", data: {{ chart_values | map('eur_num', 2) | list | tojson }} }],
   chart: { type: "area", height: 220, background: "transparent",
            toolbar: { show: false }, sparkline: { enabled: false } },
   dataLabels: { enabled: false },
@@ -92,10 +92,10 @@ const options = {
            labels: { style: { colors: "#6b7280", fontSize: "11px" }, rotate: -45 },
            tickAmount: 10 },
   yaxis: { labels: { style: { colors: "#6b7280" },
-                     formatter: (v) => fmtEur(v, 4) } },
+                     formatter: (v) => fmtEur(v, 2) } },
   colors: ["#01236c"],
   grid: { borderColor: "#dde1ea" },
-  tooltip: { theme: "light", y: { formatter: (v) => fmtEur(v, 4) } },
+  tooltip: { theme: "light", y: { formatter: (v) => fmtEur(v, 2) } },
 };
 new ApexCharts(document.querySelector("#chart-daily"), options).render();
 </script>

@@ -95,6 +95,7 @@ async def upsert_license(
     provider: str = Form(...),
     plan: str = Form(...),
     cost_monthly_usd: float = Form(...),
+    tax_rate_pct: float = Form(21.0),
     assignee: str = Form(""),
     notes: str = Form(""),
     db: AsyncSession = Depends(get_db),
@@ -106,12 +107,13 @@ async def upsert_license(
             lic.provider = provider
             lic.plan = plan
             lic.cost_monthly_usd = cost_monthly_usd
+            lic.tax_rate_pct = tax_rate_pct
             lic.assignee = assignee or None
             lic.notes = notes or None
     else:
         db.add(DevLicense(
             name=name, provider=provider, plan=plan,
-            cost_monthly_usd=cost_monthly_usd,
+            cost_monthly_usd=cost_monthly_usd, tax_rate_pct=tax_rate_pct,
             assignee=assignee or None, notes=notes or None,
         ))
     await db.commit()

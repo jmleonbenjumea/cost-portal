@@ -63,7 +63,7 @@ templates/
   config.html
 
 alembic/
-  versions/0001_initial_portal_tables.py  # Única migración: crea las 3 tablas portal_*
+  versions/   # 0001 crea las 3 tablas portal_*; 0005 es la cabeza actual
 ```
 
 ## Tablas de base de datos
@@ -74,6 +74,13 @@ alembic/
 | `portal_projects` | Proyectos de facturación (Siniestros Automation, futuras fases) |
 | `portal_cost_config` | Precios por modelo, editables desde la UI |
 | `portal_dev_licenses` | Licencias fijas mensuales (Claude Max, Power Automate…) |
+
+**IVA de las licencias**: `cost_monthly_usd` guarda el **precio de tarifa del proveedor,
+sin impuestos**; `tax_rate_pct` guarda el IVA que se repercute en factura (21% por defecto,
+0 en facturas con inversión del sujeto pasivo). Todo lo que se muestra en el panel usa la
+propiedad `DevLicense.cost_monthly_gross_usd` (tarifa + IVA), que es el importe realmente
+pagado. El desglose sin IVA se muestra como texto secundario en `/config`. Los costes de
+API **no** llevan IVA: se calculan desde `api_audit_logs` a precio de tarifa.
 
 ### Externas (solo lectura)
 | Tabla | Propósito |
@@ -89,7 +96,7 @@ Campos clave de `api_audit_logs`: `id`, `proyecto`, `conversation_id`, `timestam
 El lifespan de la app hace seed condicional (solo si las tablas están vacías):
 
 - **Proyecto:** "Siniestros Automation" — budget $100/mes, color `#6366f1`
-- **Licencias:** Claude Max 5x ($100/mes), Power Automate Premium ($15/mes)
+- **Licencias:** Claude Max 5x ($100/mes), Power Automate Premium ($15/mes) — tarifa sin IVA
 - **Precios:** todos los modelos de `DEFAULT_PRICES` en `cost_engine.py`
 
 ## Lógica de coste
@@ -119,6 +126,12 @@ La conversión ocurre **solo en el borde**, en los filtros Jinja de `app/templat
 
 Regla: **ningún router formatea dinero**; entrega USD y la plantilla aplica `eur`. En JS,
 las series ya llegan convertidas y se formatean con el helper `fmtEur(v, d)` de `base.html`.
+
+**Decimales**: 2 en todas las cifras agregadas (KPIs del dashboard, totales por modelo y
+por proyecto, ejes y tooltips de las gráficas). La excepción es el coste por llamada de
+`/registro`, que se deja a 6 decimales porque una llamada suelta ronda los 0,004 € y a 2
+decimales toda la columna sería `0,00 €`. Los precios de `/config` mantienen 3-4 decimales
+por el mismo motivo (cache read va a 0,0003 $/MTok).
 
 El tipo lo publica el BCE a diario (`eurofxref-daily.xml`, EUR→divisa; se invierte). Se
 cachea 6 h en memoria y lo refresca una tarea de fondo del lifespan, así que **ninguna

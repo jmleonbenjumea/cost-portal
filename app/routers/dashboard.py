@@ -151,7 +151,8 @@ async def dashboard(
     licenses = (await db.execute(
         select(DevLicense).where(DevLicense.active == True)
     )).scalars().all()
-    licenses_total = sum(lic.cost_monthly_usd for lic in licenses)
+    # Con IVA: es lo que se paga de verdad, y así es comparable con el gasto de APIs.
+    licenses_total = sum(lic.cost_monthly_gross_usd for lic in licenses)
 
     # Call count stats
     total_calls = len(audit_rows)

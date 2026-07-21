@@ -198,3 +198,40 @@ async def test_upsert_price(client):
         "notes": "",
     })
     assert response.status_code in (200, 303)
+
+
+@pytest.mark.asyncio
+async def test_upsert_license_applies_vat(client):
+    """El coste que se muestra es el de factura: tarifa + IVA."""
+    response = await client.post("/config/licencias/upsert", data={
+        "license_id": "",
+        "name": "Claude Max 5x",
+        "provider": "Anthropic",
+        "plan": "Max 5x",
+        "cost_monthly_usd": "100",
+        "tax_rate_pct": "21",
+        "assignee": "",
+        "notes": "",
+    })
+    assert response.status_code in (200, 303)
+
+    config_page = await client.get("/config")
+    assert "Claude Max 5x" in config_page.text
+    assert "21% IVA" in config_page.text
+
+
+@pytest.mark.asyncio
+async def test_license_without_vat_shows_no_tax(client):
+    """Con inversión del sujeto pasivo (0%) el bruto es igual al neto."""
+    await client.post("/config/licencias/upsert", data={
+        "license_id": "",
+        "name": "Servicio exento",
+        "provider": "Proveedor UE",
+        "plan": "Base",
+        "cost_monthly_usd": "50",
+        "tax_rate_pct": "0",
+        "assignee": "",
+        "notes": "",
+    })
+    config_page = await client.get("/config")
+    assert "sin IVA" in config_page.text

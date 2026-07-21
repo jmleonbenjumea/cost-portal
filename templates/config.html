@@ -182,9 +182,14 @@
         <input type="text" name="plan" placeholder="Max 5x" required>
       </div>
       <div>
-        <label class="section-label block mb-1">Coste mensual (USD) *</label>
+        <label class="section-label block mb-1">Coste mensual sin IVA (USD) *</label>
         <input type="number" name="cost_monthly_usd" step="0.01" min="0" required>
-        <p class="text-xs mt-1" style="color: var(--muted)">Se introduce en USD; el panel lo muestra en € al cambio del BCE.</p>
+        <p class="text-xs mt-1" style="color: var(--muted)">Precio de tarifa del proveedor, en USD; el panel lo muestra en € al cambio del BCE.</p>
+      </div>
+      <div>
+        <label class="section-label block mb-1">IVA (%)</label>
+        <input type="number" name="tax_rate_pct" step="0.1" min="0" max="100" value="21">
+        <p class="text-xs mt-1" style="color: var(--muted)">21% en España. Pon 0 si la factura va con inversión del sujeto pasivo.</p>
       </div>
       <div>
         <label class="section-label block mb-1">Asignado a</label>
@@ -201,10 +206,14 @@
       </div>
     </form>
 
-    {% set total_lic = licenses | sum(attribute='cost_monthly_usd') %}
+    {% set total_neto = licenses | selectattr('active') | sum(attribute='cost_monthly_usd') %}
+    {% set total_lic = licenses | selectattr('active') | sum(attribute='cost_monthly_gross_usd') %}
     {% if total_lic > 0 %}
     <div class="flex justify-between items-center mb-3 pb-3" style="border-bottom: 1px solid var(--border)">
-      <span class="text-sm" style="color: var(--muted)">Total licencias activas</span>
+      <div>
+        <span class="text-sm" style="color: var(--muted)">Total licencias activas</span>
+        <p class="text-xs" style="color: var(--muted)">{{ total_neto | eur }} sin IVA</p>
+      </div>
       <span class="text-base font-bold" style="color: var(--navy)">{{ total_lic | eur }}/mes</span>
     </div>
     {% endif %}
@@ -220,7 +229,15 @@
           <p class="text-xs" style="color: var(--muted)">{{ lic.plan }}{% if lic.assignee %} · {{ lic.assignee }}{% endif %}</p>
         </div>
         <div class="flex items-center gap-3">
-          <span class="text-sm font-semibold" style="color: var(--text)">{{ lic.cost_monthly_usd | eur }}/mes</span>
+          <div class="text-right">
+            <span class="text-sm font-semibold" style="color: var(--text)">{{ lic.cost_monthly_gross_usd | eur }}/mes</span>
+            <p class="text-xs" style="color: var(--muted)">
+              {{ lic.cost_monthly_usd | eur }}{% if lic.tax_rate_pct %} + {{ lic.tax_rate_pct | num(0) }}% IVA{% else %} · sin IVA{% endif %}
+            </p>
+          </div>
+          <button type="button"
+                  onclick="editLicense('{{ lic.id }}','{{ lic.name }}','{{ lic.provider }}','{{ lic.plan }}',{{ lic.cost_monthly_usd }},{{ lic.tax_rate_pct }},'{{ lic.assignee or '' }}','{{ lic.notes or '' }}')"
+                  class="text-xs font-medium transition-colors" style="color: var(--navy)">Editar</button>
           <form method="post" action="/config/licencias/{{ lic.id }}/toggle">
             <button type="submit" class="text-xs font-medium transition-colors"
                     style="color: {% if lic.active %}#16a34a{% else %}#9ca3af{% endif %}">
@@ -246,6 +263,20 @@ function editProject(id, name, description, color, budget) {
   form.querySelector('[name=description]').value = description;
   form.querySelector('[name=color]').value = color;
   form.querySelector('[name=budget_monthly]').value = budget || '';
+  form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function editLicense(id, name, provider, plan, cost, taxRate, assignee, notes) {
+  const form = document.getElementById('form-lic');
+  form.classList.remove('hidden');
+  form.querySelector('[name=license_id]').value = id;
+  form.querySelector('[name=name]').value = name;
+  form.querySelector('[name=provider]').value = provider;
+  form.querySelector('[name=plan]').value = plan;
+  form.querySelector('[name=cost_monthly_usd]').value = cost;
+  form.querySelector('[name=tax_rate_pct]').value = taxRate;
+  form.querySelector('[name=assignee]').value = assignee;
+  form.querySelector('[name=notes]').value = notes;
   form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
