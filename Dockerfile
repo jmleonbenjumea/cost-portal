@@ -20,4 +20,9 @@ USER appuser
 
 # Escucha en el puerto del panel (PORTAL_PORT, por defecto 8001). Lo publica
 # Plesk/nginx por HTTPS; nunca directo a internet (solo loopback en el compose).
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORTAL_PORT:-8001} --workers 2"]
+# Las migraciones corren ANTES de uvicorn: el `create_all` del lifespan crea tablas que
+# falten pero nunca añade columnas a una tabla ya existente, así que sin este paso un
+# despliegue con una columna nueva arranca contra un esquema viejo y devuelve 500 en
+# cada request. Si `alembic upgrade head` falla, el contenedor no arranca — un fallo
+# ruidoso es preferible a servir un panel roto.
+CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port ${PORTAL_PORT:-8001} --workers 2"]
