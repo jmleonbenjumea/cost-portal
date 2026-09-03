@@ -12,6 +12,9 @@
 services:
   portal:
     build: .
+    # Tope de memoria (entorno Plesk compartido, 11 GiB y SIN swap: un contenedor
+    # desbocado se lleva por delante al resto). Medido en reposo el 03.09.2026.
+    mem_limit: 512m
     env_file: .env
     networks:
       - central
